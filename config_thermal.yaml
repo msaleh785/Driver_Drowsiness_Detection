@@ -1,0 +1,224 @@
+# Thermal-Specific Configuration for Driver Drowsiness Detection
+# Add these settings to your main config.yaml
+
+drowsiness_thermal:
+  # Detection thresholds (0.0 - 1.0)
+  # Higher value = more sensitive to drowsiness
+  thresholds:
+    pre_alert: 0.40          # Start pre-warning
+    soft: 0.55               # Moderate drowsiness
+    medium: 0.70             # Severe drowsiness - STOP DRIVING
+    critical: 0.85           # Emergency - IMMEDIATE STOP
+  
+  # Strategy weights for hybrid fusion
+  # Sum should equal 1.0
+  weights:
+    eye_closure: 0.40        # Weight for eye closure indicators
+    yawn: 0.25               # Weight for yawning detection
+    thermal_signature: 0.15  # Weight for thermal-specific metrics
+    temporal_trend: 0.15     # Weight for time-series patterns
+    head_position: 0.05      # Weight for head movement
+
+  # State machine configuration
+  level_consistency_frames: 5  # Frames required to confirm level change
+  allow_immediate_down: true   # Allow immediate downgrade to alert
+
+  # Alert configuration
+  alert_config:
+    high_alert_frames: 10    # Frames before high alert audio
+    critical_alert_frames: 5 # Frames before critical alert audio
+    visual_alert: true
+    audio_alert: true
+
+# Thermal face detection
+thermal_face_detection:
+  min_face_size: 50
+  use_mediapipe_fallback: true
+  temperature_threshold: null  # auto-calibrate
+
+# Thermal eye monitoring
+thermal_eye_monitor:
+  strategy: "hybrid"           # Options: ear, thermal, temporal, hybrid
+  fps: 15
+  
+  # EAR-based thresholds
+  ear_threshold: 0.15         # Lower = more sensitive
+  ear_consecutive_frames: 3   # Frames for closure detection
+  
+  # Thermal-based thresholds
+  thermal_gradient_threshold: 30  # Controls sensitivity
+  thermal_dark_threshold: 50      # Temperature differential
+  
+  # PERCLOS (Percentage of Eye Closure)
+  perclos_window_frames: 150
+  perclos_threshold: 0.30     # 30% closure = drowsy
+  
+  # Sleep detection
+  sleep_threshold_frames: 60  # Consecutive closed eyes
+  blink_frequency_threshold: 30  # Blinks per minute
+
+# Thermal yawn detection
+thermal_yawn_detector:
+  strategy: "hybrid"           # Options: mar, thermal, temporal, contour, hybrid
+  fps: 15
+  
+  # MAR-based thresholds
+  mar_threshold: 0.50         # Mouth aspect ratio
+  
+  # Thermal-based thresholds
+  mouth_interior_temp_drop: 15     # Celsius (cooler when open)
+  mouth_opening_size: 10           # Minimum pixels
+  
+  # Duration and frequency
+  yawn_duration_min: 0.5           # Seconds
+  yawn_duration_max: 5.0           # Seconds
+  yawn_frequency_threshold: 3      # Per 5 minutes
+  
+  # Contour-based thresholds
+  min_mouth_area: 50
+  
+  # Morphological operations
+  kernel_size: 15                  # For morphology operations
+
+# Drowsiness analyzer fusion weights
+drowsiness_fusion:
+  # Adjust these based on validation results
+  eye_weight: 0.40
+  yawn_weight: 0.25
+  temporal_weight: 0.15
+  thermal_weight: 0.15
+  head_weight: 0.05
+
+# Temporal model configuration (optional)
+temporal_model:
+  enabled: false
+  model_type: "tcn"           # Options: tcn, gru
+  model_path: "models/thermal_temporal_model.tflite"
+  window_size_seconds: 2.0
+  fps: 15
+  input_features: 10
+
+# Calibration
+calibration:
+  enabled: false
+  calibration_duration: 20    # Seconds
+  profiles_directory: "thermal_driver_profiles"
+  auto_calibrate_on_start: false
+  
+  # Default baselines for thermal imaging
+  default_baselines:
+    # Temperature-based baselines
+    face_baseline_temp: 32.0       # Celsius
+    eye_baseline_temp_drop: 2.0    # Cooler than face
+    mouth_interior_temp: 30.0      # Cooler breath
+    
+    # EAR baseline for open eyes
+    EAR_baseline: 0.35
+    
+    # MAR baseline for closed mouth
+    MAR_baseline: 0.25
+
+# Alert system configuration
+alert_system:
+  audio_alert: true
+  visual_alert: true
+  
+  # Alert sounds
+  alert_sounds:
+    pre_alert: "assets/alert_soft.wav"
+    medium: "assets/alert_medium.wav"
+    critical: "assets/alert_critical.wav"
+  
+  # Alert messages
+  alert_messages:
+    pre_alert: "Early drowsiness detected. Consider taking a break."
+    medium: "Severe drowsiness. STOP DRIVING immediately."
+    critical: "CRITICAL DROWSINESS ALERT. EMERGENCY STOP REQUIRED."
+
+# Reporting configuration
+reporting:
+  enabled: true
+  output_format: "both"       # Options: text, json, both
+  include_video_analysis: true
+  include_thermal_metrics: true
+  
+  # Report templates
+  metrics_to_include:
+    - drowsiness_level
+    - component_scores
+    - eye_metrics
+    - yawn_metrics
+    - temporal_trends
+    - session_summary
+    - recommendations
+
+# Thermal camera specifications
+thermal_camera:
+  # Adjust these for your specific camera
+  expected_temperature_range: [20, 45]  # Celsius
+  thermal_resolution: [640, 480]
+  thermal_format: "grayscale8"         # grayscale8, grayscale16
+  
+  # Camera-specific calibration
+  calibration:
+    thermal_range_min: 0              # Min value
+    thermal_range_max: 255            # Max value (for 8-bit)
+    emissivity: 0.98                  # Typical for human skin
+    distance_from_camera: 0.5         # Meters
+
+# Logging configuration
+logging:
+  level: "INFO"               # DEBUG, INFO, WARNING, ERROR
+  file: "thermal_detection.log"
+  console_output: true
+  
+  # What to log
+  log_frames: false           # Log every frame (verbose)
+  log_detections: true
+  log_state_changes: true
+  log_alerts: true
+  log_metrics: true
+
+# Performance optimization
+performance:
+  # Frame processing
+  skip_frames: 0              # Process every Nth frame (0 = all)
+  max_face_size: 640          # Maximum face region size
+  
+  # Computation
+  num_threads: 2
+  enable_gpu: false           # If CUDA available
+  
+  # Memory
+  frame_buffer_size: 30       # For temporal analysis
+  
+  # Export options
+  export_resolution: [320, 240]  # For video output
+  export_framerate: 15        # FPS for saved videos
+  export_codec: "mp4v"        # Video codec
+
+# Development and testing
+development:
+  debug_visualizations: false  # Show internal processing
+  save_detection_frames: false # Save each frame with detections
+  verbose_logging: false       # Extra console output
+  save_intermediate_results: false
+  
+  # Testing
+  test_mode: false
+  test_video_path: "thermal_test.mp4"
+  test_duration_seconds: 60
+
+# System limits and constraints
+constraints:
+  max_processing_time_per_frame: 50  # Milliseconds
+  min_face_detection_confidence: 0.5
+  max_consecutive_missed_detections: 10
+  
+  # Safety thresholds
+  emergency_shutdown_level: 4  # CRITICAL
+  emergency_shutdown_duration: 2  # Seconds
+
+# This configuration file is structured for thermal cameras
+# Modify values based on your specific hardware and requirements
+# See THERMAL_IMAGING_GUIDE.md for detailed parameter explanations
