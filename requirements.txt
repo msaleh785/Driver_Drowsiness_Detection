@@ -1,5 +1,0 @@
-opencv-python
-dlib
-imutils
-numpy
-mediapipe
